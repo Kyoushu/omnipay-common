@@ -4,6 +4,7 @@
  */
 
 namespace Omnipay\Common;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 
 /**
  * Payment gateway interface
@@ -52,4 +53,12 @@ interface GatewayInterface
      * @return array
      */
     public function getParameters();
+
+    /**
+     * Get gateway event dispatcher
+     *
+     * @return EventDispatcherInterface
+     */
+    public function getEventDispatcher();
+
 }

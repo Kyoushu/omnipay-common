@@ -7,6 +7,10 @@ namespace Omnipay\Common;
 
 use Guzzle\Http\ClientInterface;
 use Guzzle\Http\Client as HttpClient;
+use Omnipay\Common\Event\GatewayEvent;
+use Symfony\Component\EventDispatcher\Event;
+use Symfony\Component\EventDispatcher\EventDispatcher;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\HttpFoundation\ParameterBag;
 use Symfony\Component\HttpFoundation\Request as HttpRequest;
 
@@ -60,15 +64,23 @@ abstract class AbstractGateway implements GatewayInterface
     protected $httpRequest;
 
     /**
+     * @var EventDispatcherInterface
+     */
+    protected $eventDispatcher;
+
+    /**
      * Create a new gateway instance
      *
-     * @param ClientInterface $httpClient  A Guzzle client to make API calls with
-     * @param HttpRequest     $httpRequest A Symfony HTTP request object
+     * @param ClientInterface               $httpClient      A Guzzle client to make API calls with
+     * @param HttpRequest                   $httpRequest     A Symfony HTTP request object
+     * @param EventDispatcherInterface|null $eventDispatcher A Symfony event dispatcher implementation
      */
-    public function __construct(ClientInterface $httpClient = null, HttpRequest $httpRequest = null)
+    public function __construct(ClientInterface $httpClient = null, HttpRequest $httpRequest = null, EventDispatcherInterface $eventDispatcher = null)
     {
         $this->httpClient = $httpClient ?: $this->getDefaultHttpClient();
         $this->httpRequest = $httpRequest ?: $this->getDefaultHttpRequest();
+        $this->eventDispatcher = $eventDispatcher;
+
         $this->initialize();
     }
 
@@ -90,6 +102,7 @@ abstract class AbstractGateway implements GatewayInterface
      */
     public function initialize(array $parameters = array())
     {
+
         $this->parameters = new ParameterBag;
 
         // set default parameters
@@ -101,7 +114,13 @@ abstract class AbstractGateway implements GatewayInterface
             }
         }
 
+        $event = new GatewayEvent($this, $this->parameters);
+        $this->dispatch(GatewayEvent::PRE_INITIALIZE, $event);
+
         Helper::initialize($this, $parameters);
+
+        $event = new GatewayEvent($this, $this->parameters);
+        $this->dispatch(GatewayEvent::POST_INITIALIZE, $event);
 
         return $this;
     }
@@ -319,7 +338,7 @@ abstract class AbstractGateway implements GatewayInterface
      */
     protected function createRequest($class, array $parameters)
     {
-        $obj = new $class($this->httpClient, $this->httpRequest);
+        $obj = new $class($this->httpClient, $this->httpRequest, $this->eventDispatcher);
 
         return $obj->initialize(array_replace($this->getParameters(), $parameters));
     }
@@ -348,4 +367,26 @@ abstract class AbstractGateway implements GatewayInterface
     {
         return HttpRequest::createFromGlobals();
     }
+
+    /**
+     * Get the event dispatcher
+     *
+     * @return EventDispatcherInterface|null
+     */
+    public function getEventDispatcher()
+    {
+        return $this->eventDispatcher;
+    }
+
+    /**
+     * @param string $eventName
+     * @param Event|null $event
+     */
+    protected function dispatch($eventName, Event $event = null)
+    {
+        $eventDispatcher = $this->getEventDispatcher();
+        if($eventDispatcher === null) return;
+        $eventDispatcher->dispatch($eventName, $event);
+    }
+
 }

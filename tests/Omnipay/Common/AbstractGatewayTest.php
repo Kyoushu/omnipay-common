@@ -5,6 +5,7 @@ namespace Omnipay\Common;
 use Mockery as m;
 use Omnipay\Common\Message\AbstractRequest;
 use Omnipay\Tests\TestCase;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\HttpFoundation\ParameterBag;
 
 class AbstractGatewayTest extends TestCase
@@ -148,10 +149,27 @@ class AbstractGatewayTest extends TestCase
 
         $this->assertSame(array('currency' => 'THB'), $request->getParameters());
     }
+
+    public function testInitializeEvent()
+    {
+
+        /** @var \PHPUnit_Framework_MockObject_MockObject|EventDispatcherInterface $dispatcher */
+        $dispatcher = $this->getMock('\Symfony\Component\EventDispatcher\EventDispatcherInterface');
+
+        $dispatcher
+            ->expects($this->exactly(2))
+            ->method('dispatch')
+        ;
+
+        new AbstractGatewayTest_MockAbstractGateway(null, null, $dispatcher);
+
+    }
+
 }
 
 class AbstractGatewayTest_MockAbstractGateway extends AbstractGateway
 {
+
     public function getName()
     {
         return 'Mock Gateway Implementation';
@@ -171,6 +189,7 @@ class AbstractGatewayTest_MockAbstractGateway extends AbstractGateway
     {
         return $this->createRequest($class, $parameters);
     }
+
 }
 
 class AbstractGatewayTest_MockAbstractRequest extends AbstractRequest

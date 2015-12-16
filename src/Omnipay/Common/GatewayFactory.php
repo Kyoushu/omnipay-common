@@ -7,6 +7,8 @@ namespace Omnipay\Common;
 
 use Guzzle\Http\ClientInterface;
 use Omnipay\Common\Exception\RuntimeException;
+use Symfony\Component\EventDispatcher\EventDispatcher;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\HttpFoundation\Request as HttpRequest;
 
 /**
@@ -91,13 +93,14 @@ class GatewayFactory
     /**
      * Create a new gateway instance
      *
-     * @param string               $class       Gateway name
-     * @param ClientInterface|null $httpClient  A Guzzle HTTP Client implementation
-     * @param HttpRequest|null     $httpRequest A Symfony HTTP Request implementation
-     * @throws RuntimeException                 If no such gateway is found
-     * @return GatewayInterface                 An object of class $class is created and returned
+     * @param string                        $class           Gateway name
+     * @param ClientInterface|null          $httpClient      A Guzzle HTTP Client implementation
+     * @param HttpRequest|null              $httpRequest     A Symfony HTTP Request implementation
+     * @param EventDispatcherInterface|null $eventDispatcher A Symfony event dispatcher implementation
+     * @throws RuntimeException                              If no such gateway is found
+     * @return GatewayInterface                              An object of class $class is created and returned
      */
-    public function create($class, ClientInterface $httpClient = null, HttpRequest $httpRequest = null)
+    public function create($class, ClientInterface $httpClient = null, HttpRequest $httpRequest = null, EventDispatcherInterface $eventDispatcher = null)
     {
         $class = Helper::getGatewayClassName($class);
 
@@ -105,7 +108,21 @@ class GatewayFactory
             throw new RuntimeException("Class '$class' not found");
         }
 
-        return new $class($httpClient, $httpRequest);
+        if($eventDispatcher === null){
+            $eventDispatcher = $this->getDefaultEventDispatcher();
+        }
+
+        return new $class($httpClient, $httpRequest, $eventDispatcher);
+    }
+
+    /**
+     * Get the default event dispatcher
+     *
+     * @return EventDispatcher
+     */
+    protected function getDefaultEventDispatcher()
+    {
+        return new EventDispatcher();
     }
 
     /**
